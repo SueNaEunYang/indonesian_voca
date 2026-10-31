@@ -63,6 +63,9 @@
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 14px; }
   .card h2 { font-size: 16px; margin: 0 0 6px; }
   kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+  .decks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .decks label { display: flex; gap: 8px; align-items: center; font-size: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; cursor: pointer; }
+  .decks label small { color: var(--muted); margin-left: auto; font-size: 12px; white-space: nowrap; }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
   .toast.show { opacity: 1; }
 </style>
@@ -96,6 +99,7 @@
         <option value="all">전체 무작위</option>
         <option value="weak">약한 단어만</option>
       </select>
+      <select id="unit" aria-label="단원"></select>
     </div>
     <div id="stage"></div>
     <p class="note">단축키: <kbd>Space</kbd> 뒤집기 · <kbd>1</kbd> 모름 · <kbd>2</kbd> 애매 · <kbd>3</kbd> 알아 · <kbd>S</kbd> 발음</p>
@@ -130,50 +134,25 @@
       </div>
     </div>
     <div class="card">
-      <h2>기초 단어로 시작해 보기</h2>
-      <p class="note">아직 단어가 없다면 인사·음식 위주의 기초 단어 30개를 넣어 볼 수 있어요.</p>
-      <button class="btn" id="starterBtn">기초 단어 넣기</button>
+      <h2>단원별 기초 단어</h2>
+      <p class="note">단원 주제에 맞춰 정리한 단어예요. 실제로 배운 단어와 다를 수 있으니, 필요 없는 건 '단어' 탭에서 지우거나 고쳐 주세요.</p>
+      <div class="row" style="margin:8px 0">
+        <button class="btn" id="deckAll">전체 선택</button>
+        <button class="btn" id="deckNone">선택 해제</button>
+      </div>
+      <div id="decks" class="decks"></div>
+      <button class="btn primary" id="deckAdd" style="margin-top:10px">선택한 단원 넣기</button>
     </div>
   </section>
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="words.js"></script>
 <script>
 const KEY = 'kartu-kata-v1';
 // 상자 번호별 다음 복습까지의 일 수 (라이트너 방식)
 const INTERVALS = [0, 1, 2, 4, 7, 15, 30, 60];
 const DAY = 86400000;
-
-const STARTER = `saya = 나, 저
-kamu = 너, 당신
-dia = 그, 그녀
-kami = 우리 (듣는 사람 제외)
-kita = 우리 (듣는 사람 포함)
-apa = 무엇
-siapa = 누구
-di mana = 어디에
-halo = 안녕하세요
-selamat pagi = 좋은 아침입니다
-selamat malam = 안녕하세요 (저녁 인사)
-terima kasih = 감사합니다
-sama-sama = 천만에요
-maaf = 미안합니다
-tolong = 부탁합니다, 도와주세요
-ya = 네
-tidak = 아니요, ~하지 않다
-bukan = ~이 아니다
-air = 물
-kopi = 커피
-teh = 차
-nasi = 밥
-roti = 빵
-susu = 우유
-makan = 먹다
-minum = 마시다
-mau = 원하다
-suka = 좋아하다
-besar = 크다
-kecil = 작다`;
 
 let state = load();
 let session = { queue: [], current: null, flipped: false, front: 'id' };
@@ -214,14 +193,14 @@ function parseLines(text) {
   }
   return out;
 }
-function addWords(pairs) {
+function addWords(pairs, tag = '') {
   const seen = new Set(state.cards.map(c => norm(c.id)));
   let added = 0;
   for (const p of pairs) {
     if (seen.has(norm(p.id))) continue;
     seen.add(norm(p.id));
     state.cards.push({ uid: crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2),
-      id: p.id, ko: p.ko, box: 0, due: Date.now(), right: 0, wrong: 0, added: Date.now() });
+      id: p.id, ko: p.ko, tag, box: 0, due: Date.now(), right: 0, wrong: 0, added: Date.now() });
     added++;
   }
   save();
@@ -231,7 +210,9 @@ function addWords(pairs) {
 /* ---------- 복습 ---------- */
 function buildQueue() {
   const mode = $('mode').value;
+  const unit = $('unit').value;
   let pool = state.cards;
+  if (unit) pool = pool.filter(c => (c.tag || '내가 넣은 단어') === unit);
   if (mode === 'due') pool = pool.filter(isDue);
   if (mode === 'weak') pool = pool.filter(c => c.box <= 1 || c.wrong > c.right);
   session.queue = shuffle(pool.map(c => c.uid));
@@ -280,6 +261,22 @@ function speak(text) {
 
 /* ---------- 화면 ---------- */
 function render() { renderStats(); renderStage(); }
+function renderUnits() {
+  const sel = $('unit'), cur = sel.value;
+  const tags = [...new Set(state.cards.map(c => c.tag || '내가 넣은 단어'))]
+    .sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+  sel.innerHTML = `<option value="">모든 단원</option>` + tags.map(t => `<option>${esc(t)}</option>`).join('');
+  sel.value = tags.includes(cur) ? cur : '';
+}
+function renderDecks() {
+  const have = new Set(state.cards.map(c => norm(c.id)));
+  $('decks').innerHTML = DECKS.map((d, i) => {
+    const pairs = parseLines(d.words);
+    const n = pairs.filter(p => have.has(norm(p.id))).length;
+    return `<label><input type="checkbox" value="${i}" ${n === pairs.length ? 'disabled' : ''}>${esc(d.name)}
+      <small>${n === pairs.length ? '넣음' : n ? `${n}/${pairs.length}` : `${pairs.length}개`}</small></label>`;
+  }).join('');
+}
 function renderStats() {
   $('sDue').textContent = state.cards.filter(isDue).length;
   $('sTotal').textContent = state.cards.length;
@@ -335,12 +332,13 @@ function showTab(name) {
   document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name));
   document.querySelectorAll('section').forEach(s => s.hidden = s.id !== name);
   if (name === 'words') renderList();
-  if (name === 'study') buildQueue();
+  if (name === 'add') renderDecks();
+  if (name === 'study') { renderUnits(); buildQueue(); }
 }
 
 /* ---------- 이벤트 ---------- */
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
-$('dir').onchange = $('mode').onchange = buildQueue;
+$('dir').onchange = $('mode').onchange = $('unit').onchange = buildQueue;
 $('q').oninput = renderList;
 
 $('list').onclick = e => {
@@ -366,9 +364,15 @@ $('addBtn').onclick = () => {
   $('bulk').value = '';
   renderStats();
 };
-$('starterBtn').onclick = () => {
-  const r = addWords(parseLines(STARTER));
-  toast(`${r.added}개 추가했어요`); renderStats();
+const deckBoxes = () => [...document.querySelectorAll('#decks input:not(:disabled)')];
+$('deckAll').onclick = () => deckBoxes().forEach(b => b.checked = true);
+$('deckNone').onclick = () => deckBoxes().forEach(b => b.checked = false);
+$('deckAdd').onclick = () => {
+  const picked = deckBoxes().filter(b => b.checked);
+  if (!picked.length) return toast('넣을 단원을 골라 주세요');
+  let added = 0;
+  for (const b of picked) { const d = DECKS[+b.value]; added += addWords(parseLines(d.words), d.name).added; }
+  toast(`${added}개 추가했어요`); renderDecks(); renderStats();
 };
 $('exportBtn').onclick = () => {
   const blob = new Blob([JSON.stringify(state, null, 1)], { type: 'application/json' });
@@ -402,6 +406,7 @@ document.addEventListener('keydown', e => {
 });
 if ('speechSynthesis' in window) speechSynthesis.getVoices();
 
+renderUnits();
 buildQueue();
 </script>
 </body>
