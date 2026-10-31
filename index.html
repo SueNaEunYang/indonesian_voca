@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kartu Kata</title>
+<meta name="description" content="인도네시아어 단어 플래시카드 — 간격 반복 복습">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇮🇩</text></svg>">
+<style>
+  :root {
+    --bg: #faf7f2; --card: #ffffff; --ink: #1f1d1a; --muted: #6f6a62; --line: #e6e0d6;
+    --accent: #c8102e; --accent-ink: #fff; --good: #2f7d4f; --mid: #b7791f; --bad: #b42318;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171614; --card: #22201d; --ink: #f1ede6; --muted: #a39d93; --line: #35322d;
+      --accent: #ef4056; --good: #4fb07a; --mid: #e0a23a; --bad: #f0645a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+  h1 span { color: var(--accent); }
+  nav { display: flex; gap: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  nav button { border: 0; background: none; color: var(--muted); padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; }
+  nav button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+  section[hidden] { display: none; }
+  .stats { display: flex; gap: 8px; margin: 8px 0 16px; flex-wrap: wrap; }
+  .stat { flex: 1; min-width: 90px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat small { color: var(--muted); font-size: 12px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  select, input[type=text], textarea { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  textarea { width: 100%; min-height: 160px; resize: vertical; font-size: 15px; }
+  .btn { font: inherit; font-size: 15px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 14px; cursor: pointer; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .flash { margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+    min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 28px 20px; cursor: pointer; user-select: none; position: relative; }
+  .flash .label { position: absolute; top: 12px; left: 16px; font-size: 12px; color: var(--muted); }
+  .flash .front { font-size: 34px; font-weight: 650; letter-spacing: -.01em; word-break: break-word; }
+  .flash .back { margin-top: 14px; font-size: 22px; color: var(--muted); word-break: break-word; }
+  .flash .hint { margin-top: 18px; font-size: 13px; color: var(--muted); }
+  .speak { position: absolute; top: 8px; right: 10px; border: 0; background: none; font-size: 22px; cursor: pointer; padding: 6px; }
+  .grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .grades .btn { padding: 12px 6px; font-weight: 600; }
+  .grades .bad { color: var(--bad); } .grades .mid { color: var(--mid); } .grades .good { color: var(--good); }
+  .grades small { display: block; font-weight: 400; font-size: 11px; color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 40px 12px; }
+  .list { list-style: none; padding: 0; margin: 12px 0 0; }
+  .list li { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+  .list .w { flex: 1; min-width: 0; }
+  .list .w b { display: block; }
+  .list .w span { color: var(--muted); font-size: 14px; }
+  .box { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+  .icon { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 6px; }
+  .note { color: var(--muted); font-size: 13px; margin: 6px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 14px; }
+  .card h2 { font-size: 16px; margin: 0 0 6px; }
+  kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Kartu <span>Kata</span></h1>
+    <nav role="tablist">
+      <button role="tab" data-tab="study" aria-selected="true">복습</button>
+      <button role="tab" data-tab="words">단어</button>
+      <button role="tab" data-tab="add">추가</button>
+    </nav>
+  </header>
+
+  <!-- 복습 -->
+  <section id="study">
+    <div class="stats">
+      <div class="stat"><b id="sDue">0</b><small>오늘 복습할 카드</small></div>
+      <div class="stat"><b id="sTotal">0</b><small>전체 단어</small></div>
+      <div class="stat"><b id="sDone">0</b><small>오늘 푼 카드</small></div>
+    </div>
+    <div class="row">
+      <select id="dir" aria-label="방향">
+        <option value="id">인니어 → 뜻</option>
+        <option value="ko">뜻 → 인니어</option>
+        <option value="mix">섞어서</option>
+      </select>
+      <select id="mode" aria-label="범위">
+        <option value="due">오늘 복습할 것만</option>
+        <option value="all">전체 무작위</option>
+        <option value="weak">약한 단어만</option>
+      </select>
+    </div>
+    <div id="stage"></div>
+    <p class="note">단축키: <kbd>Space</kbd> 뒤집기 · <kbd>1</kbd> 모름 · <kbd>2</kbd> 애매 · <kbd>3</kbd> 알아 · <kbd>S</kbd> 발음</p>
+  </section>
+
+  <!-- 단어 목록 -->
+  <section id="words" hidden>
+    <div class="row">
+      <input type="text" id="q" placeholder="검색" style="flex:1">
+      <span class="note" id="wCount"></span>
+    </div>
+    <ul class="list" id="list"></ul>
+  </section>
+
+  <!-- 추가 -->
+  <section id="add" hidden>
+    <div class="card">
+      <h2>단어 붙여넣기</h2>
+      <p class="note">한 줄에 하나씩, <b>인도네시아어</b>와 <b>뜻</b> 사이를 <code>=</code>, <code>-</code>, 탭, 쉼표 중 하나로 나눠 주세요. 이미 있는 단어는 건너뜁니다.</p>
+      <textarea id="bulk" placeholder="selamat pagi = 좋은 아침&#10;terima kasih - 감사합니다&#10;air, 물"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn primary" id="addBtn">추가하기</button>
+        <span class="note" id="addMsg"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>백업</h2>
+      <p class="note">단어와 복습 기록은 <b>이 브라우저에만</b> 저장됩니다. 휴대폰과 PC를 오갈 때나 브라우저 데이터를 지우기 전에는 백업 파일로 옮겨 주세요.</p>
+      <div class="row">
+        <button class="btn" id="exportBtn">백업 파일 저장</button>
+        <label class="btn">백업 불러오기<input type="file" id="importFile" accept=".json,.csv,.txt" hidden></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>기초 단어로 시작해 보기</h2>
+      <p class="note">아직 단어가 없다면 인사·음식 위주의 기초 단어 30개를 넣어 볼 수 있어요.</p>
+      <button class="btn" id="starterBtn">기초 단어 넣기</button>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = 'kartu-kata-v1';
+// 상자 번호별 다음 복습까지의 일 수 (라이트너 방식)
+const INTERVALS = [0, 1, 2, 4, 7, 15, 30, 60];
+const DAY = 86400000;
+
+const STARTER = `saya = 나, 저
+kamu = 너, 당신
+dia = 그, 그녀
+kami = 우리 (듣는 사람 제외)
+kita = 우리 (듣는 사람 포함)
+apa = 무엇
+siapa = 누구
+di mana = 어디에
+halo = 안녕하세요
+selamat pagi = 좋은 아침입니다
+selamat malam = 안녕하세요 (저녁 인사)
+terima kasih = 감사합니다
+sama-sama = 천만에요
+maaf = 미안합니다
+tolong = 부탁합니다, 도와주세요
+ya = 네
+tidak = 아니요, ~하지 않다
+bukan = ~이 아니다
+air = 물
+kopi = 커피
+teh = 차
+nasi = 밥
+roti = 빵
+susu = 우유
+makan = 먹다
+minum = 마시다
+mau = 원하다
+suka = 좋아하다
+besar = 크다
+kecil = 작다`;
+
+let state = load();
+let session = { queue: [], current: null, flipped: false, front: 'id' };
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.cards)) return s;
+  } catch (e) {}
+  return { cards: [], log: {} };
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch (e) { toast('저장하지 못했어요. 백업 파일을 저장해 두세요.'); }
+}
+const today = () => new Date().toISOString().slice(0, 10);
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const norm = s => s.trim().toLowerCase().replace(/\s+/g, ' ');
+const isDue = c => c.due <= Date.now();
+const $ = id => document.getElementById(id);
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+/* ---------- 단어 파싱 ---------- */
+function parseLines(text) {
+  const out = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    // 첫 구분자에서 한 번만 자른다. 하이픈은 'sama-sama'처럼 단어 안에 쓰이므로 앞뒤 공백이 있을 때만 구분자로 본다.
+    const m = line.match(/^(.+?)\s*(?:=|\t|,|\s-\s|\s–\s)\s*(.+)$/);
+    if (!m) continue;
+    const id = m[1].replace(/^"|"$/g, '').trim(), ko = m[2].replace(/^"|"$/g, '').trim();
+    if (id && ko) out.push({ id, ko });
+  }
+  return out;
+}
+function addWords(pairs) {
+  const seen = new Set(state.cards.map(c => norm(c.id)));
+  let added = 0;
+  for (const p of pairs) {
+    if (seen.has(norm(p.id))) continue;
+    seen.add(norm(p.id));
+    state.cards.push({ uid: crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2),
+      id: p.id, ko: p.ko, box: 0, due: Date.now(), right: 0, wrong: 0, added: Date.now() });
+    added++;
+  }
+  save();
+  return { added, skipped: pairs.length - added };
+}
+
+/* ---------- 복습 ---------- */
+function buildQueue() {
+  const mode = $('mode').value;
+  let pool = state.cards;
+  if (mode === 'due') pool = pool.filter(isDue);
+  if (mode === 'weak') pool = pool.filter(c => c.box <= 1 || c.wrong > c.right);
+  session.queue = shuffle(pool.map(c => c.uid));
+  next();
+}
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+function next() {
+  const uid = session.queue.shift();
+  session.current = state.cards.find(c => c.uid === uid) || null;
+  session.flipped = false;
+  const d = $('dir').value;
+  session.front = d === 'mix' ? (Math.random() < .5 ? 'id' : 'ko') : d;
+  render();
+}
+function flip() {
+  if (!session.current) return;
+  session.flipped = !session.flipped;
+  renderStage();
+}
+function grade(g) {
+  const c = session.current;
+  if (!c || !session.flipped) return;
+  if (g === 0) { c.box = 0; c.wrong++; }
+  else if (g === 1) { c.box = Math.max(1, c.box); }
+  else { c.box = Math.min(c.box + 1, INTERVALS.length - 1); c.right++; }
+  // 모름·애매는 이번 묶음 뒤쪽에 다시 넣어 한 번 더 본다
+  if (g === 0) { c.due = Date.now(); session.queue.splice(Math.min(3, session.queue.length), 0, c.uid); }
+  else if (g === 1) { c.due = startOfToday() + DAY; session.queue.push(c.uid); }
+  else { c.due = startOfToday() + INTERVALS[c.box] * DAY; }
+  state.log[today()] = (state.log[today()] || 0) + 1;
+  save();
+  next();
+}
+function speak(text) {
+  if (!('speechSynthesis' in window)) return toast('이 브라우저는 발음 듣기를 지원하지 않아요.');
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'id-ID'; u.rate = .9;
+  const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.replace('_', '-').toLowerCase().startsWith('id'));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+
+/* ---------- 화면 ---------- */
+function render() { renderStats(); renderStage(); }
+function renderStats() {
+  $('sDue').textContent = state.cards.filter(isDue).length;
+  $('sTotal').textContent = state.cards.length;
+  $('sDone').textContent = state.log[today()] || 0;
+}
+function renderStage() {
+  const st = $('stage'), c = session.current;
+  if (!state.cards.length) {
+    st.innerHTML = `<div class="flash" style="cursor:default"><div class="empty">아직 단어가 없어요.<br><br><button class="btn primary" onclick="showTab('add')">단어 추가하러 가기</button></div></div>`;
+    return;
+  }
+  if (!c) {
+    const due = state.cards.filter(isDue).length;
+    st.innerHTML = `<div class="flash" style="cursor:default"><div class="empty">${due ? '이 범위의 카드를 다 봤어요.' : '오늘 복습할 카드를 다 끝냈어요. 🎉'}<br><br>
+      <button class="btn" onclick="$('mode').value='all';buildQueue()">전체에서 더 풀기</button></div></div>`;
+    return;
+  }
+  const front = session.front === 'id' ? c.id : c.ko;
+  const back = session.front === 'id' ? c.ko : c.id;
+  st.innerHTML = `
+    <div class="flash" id="flash" role="button" tabindex="0" aria-label="카드 뒤집기">
+      <span class="label">${session.queue.length + 1}장 남음 · 상자 ${c.box}</span>
+      <button class="speak" id="spk" aria-label="발음 듣기">🔊</button>
+      <div class="front">${esc(front)}</div>
+      ${session.flipped ? `<div class="back">${esc(back)}</div>` : `<div class="hint">눌러서 뜻 보기</div>`}
+    </div>
+    <div class="grades">
+      <button class="btn bad" ${session.flipped ? '' : 'disabled'} data-g="0">모름<small>곧 다시</small></button>
+      <button class="btn mid" ${session.flipped ? '' : 'disabled'} data-g="1">애매<small>내일</small></button>
+      <button class="btn good" ${session.flipped ? '' : 'disabled'} data-g="2">알아<small>${INTERVALS[Math.min(c.box + 1, INTERVALS.length - 1)]}일 뒤</small></button>
+    </div>`;
+  $('flash').onclick = flip;
+  $('spk').onclick = e => { e.stopPropagation(); speak(c.id); };
+  st.querySelectorAll('[data-g]').forEach(b => b.onclick = () => grade(+b.dataset.g));
+}
+function renderList() {
+  const q = norm($('q').value);
+  const items = state.cards.filter(c => !q || norm(c.id).includes(q) || norm(c.ko).includes(q))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  $('wCount').textContent = `${items.length}개`;
+  $('list').innerHTML = items.map(c => `
+    <li data-uid="${c.uid}">
+      <div class="w"><b>${esc(c.id)}</b><span>${esc(c.ko)}</span></div>
+      <span class="box">상자 ${c.box}</span>
+      <button class="icon" data-act="speak" aria-label="발음">🔊</button>
+      <button class="icon" data-act="edit" aria-label="수정">✎</button>
+      <button class="icon" data-act="del" aria-label="삭제">✕</button>
+    </li>`).join('') || `<li class="empty" style="display:block">단어가 없어요.</li>`;
+}
+function esc(s) { return s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
+
+function showTab(name) {
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name));
+  document.querySelectorAll('section').forEach(s => s.hidden = s.id !== name);
+  if (name === 'words') renderList();
+  if (name === 'study') buildQueue();
+}
+
+/* ---------- 이벤트 ---------- */
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+$('dir').onchange = $('mode').onchange = buildQueue;
+$('q').oninput = renderList;
+
+$('list').onclick = e => {
+  const btn = e.target.closest('[data-act]'); if (!btn) return;
+  const c = state.cards.find(x => x.uid === btn.closest('li').dataset.uid); if (!c) return;
+  if (btn.dataset.act === 'speak') speak(c.id);
+  if (btn.dataset.act === 'edit') {
+    const id = prompt('인도네시아어', c.id); if (id === null) return;
+    const ko = prompt('뜻', c.ko); if (ko === null) return;
+    if (id.trim()) c.id = id.trim(); if (ko.trim()) c.ko = ko.trim();
+    save(); renderList();
+  }
+  if (btn.dataset.act === 'del' && confirm(`'${c.id}'를 삭제할까요?`)) {
+    state.cards = state.cards.filter(x => x !== c); save(); renderList();
+  }
+};
+
+$('addBtn').onclick = () => {
+  const pairs = parseLines($('bulk').value);
+  if (!pairs.length) { $('addMsg').textContent = '읽을 수 있는 줄이 없어요. "단어 = 뜻" 형식인지 확인해 주세요.'; return; }
+  const r = addWords(pairs);
+  $('addMsg').textContent = `${r.added}개 추가${r.skipped ? `, 중복 ${r.skipped}개 건너뜀` : ''}`;
+  $('bulk').value = '';
+  renderStats();
+};
+$('starterBtn').onclick = () => {
+  const r = addWords(parseLines(STARTER));
+  toast(`${r.added}개 추가했어요`); renderStats();
+};
+$('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `kartu-kata-${today()}.json`; a.click();
+  URL.revokeObjectURL(a.href);
+};
+$('importFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const text = await f.text();
+  try {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data.cards)) throw 0;
+    if (state.cards.length && !confirm(`지금 단어 ${state.cards.length}개를 백업 파일(${data.cards.length}개)로 바꿀까요?`)) return;
+    state = { cards: data.cards, log: data.log || {} }; save(); toast('백업을 불러왔어요');
+  } catch (err) {
+    // JSON이 아니면 CSV/텍스트 단어 목록으로 읽는다
+    const r = addWords(parseLines(text));
+    toast(`${r.added}개 추가했어요`);
+  }
+  e.target.value = ''; renderStats(); buildQueue();
+};
+
+document.addEventListener('keydown', e => {
+  if ($('study').hidden || e.target.matches('input, textarea, select')) return;
+  if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); flip(); }
+  else if (e.key === '1') grade(0);
+  else if (e.key === '2') grade(1);
+  else if (e.key === '3') grade(2);
+  else if (e.key.toLowerCase() === 's' && session.current) speak(session.current.id);
+});
+if ('speechSynthesis' in window) speechSynthesis.getVoices();
+
+buildQueue();
+</script>
+</body>
+</html>
